@@ -1,4 +1,4 @@
-# 🗄️ SQL Chat — RAG-Enhanced Text-to-SQL Assistant
+# 🗄️ Text-to-SQL-Assistant-with-Few-Shot-RAG-Enhancement
 
 A conversational interface for querying PostgreSQL databases using natural language. The system translates user questions into validated SQL queries, executes them, and returns human-readable answers — enhanced by few-shot examples retrieved via RAG.
 
