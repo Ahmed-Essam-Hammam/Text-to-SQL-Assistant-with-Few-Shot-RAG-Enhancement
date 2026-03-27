@@ -35,9 +35,9 @@ SQL_C_/
 ## ⚙️ How It Works
 
 ```
-User Question
-     │
-     ▼
+   User Question
+         │
+         ▼
 ┌─────────────────┐
 │  Table Selector │  → Picks only the relevant tables from the DB
 └────────┬────────┘
