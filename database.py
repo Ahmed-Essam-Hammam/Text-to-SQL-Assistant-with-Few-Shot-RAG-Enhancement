@@ -54,7 +54,7 @@ def get_schema(selected_tables=None, db_url: str = None):
                     SELECT "{column_name}"
                     FROM "{table}"
                     WHERE "{column_name}" IS NOT NULL
-                    LIMIT 3;
+                    LIMIT 10;
                 """)
                 try:
                     samples = conn.execute(sample_query).fetchall()
