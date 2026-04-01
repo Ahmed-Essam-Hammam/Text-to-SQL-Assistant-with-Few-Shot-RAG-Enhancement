@@ -662,6 +662,22 @@ if question:
 
         # ── Step 2: Build schema ───────────────────────────────────────────────
         relevant_tables = get_relevant_tables(question, db_url=active_db_url)
+
+        if relevant_tables == "__INJECTION__":
+            st.markdown("""
+            <div class="off-topic-card">
+                <div style="font-size:1.8rem; margin-bottom:0.75rem">🛡️</div>
+                <div style="font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; color:#e2e8f0; margin-bottom:0.4rem">
+                    Prompt injection detected
+                </div>
+                <div style="font-size:1.1rem; color:#64748b; line-height:1.6;">
+                    Your input was flagged as an attempt to override system instructions.<br>
+                    Please ask a genuine database question.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            st.stop()
+
         schema = get_schema(relevant_tables, db_url=active_db_url)
 
         # ── Step 3: Relevance check ────────────────────────────────────────────
