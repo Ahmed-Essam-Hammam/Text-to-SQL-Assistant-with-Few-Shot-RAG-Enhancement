@@ -840,7 +840,7 @@ if question:
         st.markdown('</div>', unsafe_allow_html=True)
 
         # ── Natural language answer ────────────────────────────────────────────
-        final_answer = get_natural_response(question, result)
+        final_answer = get_natural_response(question, result, history=history_str)
 
         #total_latency = time.perf_counter() - total_start
         #print(f"🚀 Total End-to-End Latency: {total_latency:.3f} seconds")
