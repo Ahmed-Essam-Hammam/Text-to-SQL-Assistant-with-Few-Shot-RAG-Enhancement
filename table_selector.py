@@ -8,7 +8,7 @@ def get_relevant_tables(question, db_url: str = None, history=""):
 
     response = safe_invoke(
         table_selector_chain,
-        {"question": question, "tables": tables, "history": history},
+        {"question": question, "tables": tables, "history": history or "No previous conversation."},
         fallback="__INJECTION__"
     )
 
