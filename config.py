@@ -4,7 +4,7 @@ from langchain_openai import AzureChatOpenAI
 
 load_dotenv()
 
-
+MEMORY_SIZE = 5      # Number of previous messages to remember
 MAX_RETRIES = 5      # Max number of retries before applying the fallback
 ROW_LIMIT = 10       # Number of rows will be shown if the generated SQL query outputs a large number of records
 
