@@ -3,7 +3,7 @@ import json
 import time
 import streamlit as st
 from dotenv import load_dotenv
-from config import MAX_RETRIES, ROW_LIMIT
+from config import MAX_RETRIES, ROW_LIMIT, MEMORY_SIZE
 from database import get_schema, execute_sql_query, get_engine
 from table_selector import get_relevant_tables
 from sql_generator import get_sql, fix_sql, get_fallback_suggestions
@@ -18,6 +18,35 @@ load_dotenv()
 if "session_initialized" not in st.session_state:
     clear_vectorstore()
     st.session_state["session_initialized"] = True
+
+
+# ── Initialize chat memory ─────────────────────────────────────────────────────
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
+
+def add_to_history(question: str, answer: str, sql: str, tables: list):
+    """Store full context of each exchange."""
+    st.session_state["chat_history"].append({
+        "question": question,
+        "answer": answer,
+        "sql": sql,
+        "tables": tables
+    })
+    st.session_state["chat_history"] = st.session_state["chat_history"][-MEMORY_SIZE:]
+
+
+def format_history(history: list) -> str:
+    if not history:
+        return "No previous conversation."
+    lines = []
+    for entry in history:
+        lines.append(f"User: {entry['question']}")
+        lines.append(f"SQL used: {entry['sql']}")
+        lines.append(f"Tables used: {entry['tables']}")
+        lines.append(f"Answer: {entry['answer']}")
+        lines.append("---")
+    return "\n".join(lines)
+
 
 
 st.set_page_config(
@@ -581,6 +610,28 @@ with st.sidebar:
         except json.JSONDecodeError:
             st.error("Invalid JSON file.")
 
+
+    st.divider()
+
+    # — Chat Memory —
+    st.markdown('<div class="sidebar-section-title">Chat Memory</div>', unsafe_allow_html=True)
+
+    history_count = len(st.session_state.get("chat_history", []))
+    if history_count > 0:
+        st.markdown(
+            f'<span class="status-badge status-active">◈ {history_count}/{MEMORY_SIZE} exchanges stored</span>',
+            unsafe_allow_html=True
+        )
+        if st.button("🗑  Clear Memory"):
+            st.session_state["chat_history"] = []
+            st.rerun()
+    else:
+        st.markdown(
+            '<span class="status-badge status-disconnected">○ No memory yet</span>',
+            unsafe_allow_html=True
+        )
+
+
     st.divider()
 
     # — Add Single Example —
@@ -650,7 +701,10 @@ st.caption("Natural language · PostgreSQL · RAG-enhanced generation")
 
 if question:
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-    total_start = time.perf_counter()
+
+    # Build history string once for all prompts
+    history_str = format_history(st.session_state["chat_history"])
+    #total_start = time.perf_counter()
     with st.spinner(""):
 
         # ── Step 1: Retrieve examples ──────────────────────────────────────────
@@ -661,7 +715,7 @@ if question:
                 st.code(examples, language="text")
 
         # ── Step 2: Build schema ───────────────────────────────────────────────
-        relevant_tables = get_relevant_tables(question, db_url=active_db_url)
+        relevant_tables = get_relevant_tables(question, db_url=active_db_url, history=history_str)
 
         if relevant_tables == "__INJECTION__":
             st.markdown("""
@@ -681,7 +735,7 @@ if question:
         schema = get_schema(relevant_tables, db_url=active_db_url)
 
         # ── Step 3: Relevance check ────────────────────────────────────────────
-        relevance = relevance_chain.invoke({"question": question, "schema": schema}).strip().upper()
+        relevance = relevance_chain.invoke({"question": question, "schema": schema, "history": history_str or "No previous conversation."}).strip().upper()
 
         if relevance != "YES":
             st.markdown("""
@@ -699,7 +753,7 @@ if question:
             st.stop()
 
         # ── Step 4: Generate SQL ───────────────────────────────────────────────
-        sql_query = get_sql(question, schema, examples=examples)
+        sql_query = get_sql(question, schema, examples=examples, history=history_str)
 
         # ── Step 4: Validate + auto-correct ───────────────────────────────────
         attempt = 0
@@ -788,8 +842,8 @@ if question:
         # ── Natural language answer ────────────────────────────────────────────
         final_answer = get_natural_response(question, result)
 
-        total_latency = time.perf_counter() - total_start
-        print(f"🚀 Total End-to-End Latency: {total_latency:.3f} seconds")
+        #total_latency = time.perf_counter() - total_start
+        #print(f"🚀 Total End-to-End Latency: {total_latency:.3f} seconds")
 
         #st.markdown('<div class="result-card">', unsafe_allow_html=True)
         st.markdown('<div class="result-card-title">Answer</div>', unsafe_allow_html=True)
@@ -798,3 +852,12 @@ if question:
             unsafe_allow_html=True,
         )
         st.markdown('</div>', unsafe_allow_html=True)
+
+
+        # ── Save to memory ─────────────────────────────────────────────
+        add_to_history(
+            question=question,
+            answer=final_answer,
+            sql=sql_query,
+            tables=relevant_tables  
+        )
