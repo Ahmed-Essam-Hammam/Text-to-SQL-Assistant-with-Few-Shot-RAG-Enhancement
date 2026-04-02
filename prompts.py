@@ -105,8 +105,10 @@ STRICT RULES:
 
 # Answer generation 
 answer_prompt = PromptTemplate(
-    input_variables=["question", "data", "is_limited"],
+    input_variables=["question", "data", "is_limited", "history"],
     template="""
+Recent conversation history (for context only):
+{history}
 User Question: {question}
 SQL Data: {data}
 Results were limited to 10 records: {is_limited}
