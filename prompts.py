@@ -3,15 +3,16 @@ from langchain_core.prompts import PromptTemplate
 
 # Relevance check 
 relevance_prompt = PromptTemplate(
-    input_variables=["question", "schema"],
+    input_variables=["question", "schema", "history"],
     template="""
 You are a database assistant gatekeeper.
 
 Your task is to determine whether a user's question is relevant to the given database schema, don't be so strict
 
 A question is considered relevant if:
-- It refers to data that could exist in the databse (tables, columns, relationships, values inside the database).
-- If you find in the question anything that is related to the schema like (table names, column names, relationships, values that could be in the database), then this query is relevant
+- It refers to data that could reasonably exist in a database (tables, columns, relationships, or values).
+- If you find in the question anything that is related to the schema like (table names, column names, relationships, values that could be in the database), then this query is relevant.
+- If the question is related to the given conversation history or asking about something that could be answered using the conversation history.
 - Questions like this is relevant, as you notice the question contains names of tables and potential values that could exist in records or columns
     - Find the names of customers who have bought tracks from every genre available in the 'Jazz' category.
     - Find all artists who have tracks in both the '90's Gold' and 'Music' playlists.
@@ -21,6 +22,14 @@ A question is considered relevant if:
 A question is NOT relevant if:
 - It asks about general knowledge that is completely unrelated to the database, like "What is the largest ocean in the world".
 
+IMPORTANT:
+- Be permissive. If there is ANY reasonable interpretation that connects the question to the schema, respond YES.
+- Do NOT require exact matches to table or column names.
+- Do NOT require certainty that the data exists — possibility is enough.
+
+Recent conversation history (for context only):
+{history}
+
 Database Schema:
 {schema}
 
@@ -29,8 +38,7 @@ User Question:
 
 RULES:
 - Respond with exactly one word: YES or NO.
-- Respond YES only if the question can be clearly and validly answered using the schema.
-- Otherwise respond NO.
+- Prefer YES when in doubt.
 - Do NOT explain your answer.
 - Do NOT add punctuation.
 """
@@ -39,9 +47,14 @@ RULES:
 
 # Table selector 
 table_selector_prompt = PromptTemplate(
-    input_variables=["question", "tables"],
+    input_variables=["question", "tables", "history"],
     template="""
 You are a database schema selector. Your only job is to pick relevant table names.
+If you feel like the question is vague or you couldn't pick the relevant tables return the whole tables in the list.
+The user may ask a question that is related to a previous question from the conversation history but at the same time requires new different tables to answer it, then you need to append these new tables to the tables related to the question from the previous conversation history.
+
+Recent conversation history (for context only):
+{history}
 
 User Question:
 {question}
@@ -59,7 +72,7 @@ Rules:
 
 # SQL generation
 sql_prompt = PromptTemplate(
-    input_variables=["question", "schema", "examples"],
+    input_variables=["question", "schema", "examples", "history"],
     template="""
 You are an expert PostgreSQL data analyst. Your ONLY job is to write SQL queries.
 
@@ -70,8 +83,10 @@ IMPORTANT PostgreSQL RULE:
 - Always quote table names AND column names exactly as they appear in the schema.
 - Never leave a capitalized identifier unquoted.
 
-Here are similar example queries:
+Recent conversation history (for context only):
+{history}
 
+Here are similar example queries:
 {examples}
 
 Here is the database schema:
