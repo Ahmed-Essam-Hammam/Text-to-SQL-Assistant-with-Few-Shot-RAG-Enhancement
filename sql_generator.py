@@ -3,14 +3,15 @@ from sql_validator import validate_sql
 from rag.retriever import retrieve_examples
 
 
-def get_sql(question, schema, examples=None):
+def get_sql(question, schema, examples=None, history=""):
 
     examples = retrieve_examples(question)
 
     sql = sql_chain.invoke({
         "question": question,
         "schema": schema,
-        "examples": examples or "No examples provided."
+        "examples": examples or "No examples provided.",
+        "history": history or "No previous conversation."
     })
 
     return sql.replace("```sql", "").replace("```", "").strip()
